@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>صانع الصور المصغرة - Thumbnail Maker</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Cairo for Arabic text -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
+    <!-- Fabric.js for Canvas Manipulation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: #0f172a; /* Slate 900 */
+            color: #f8fafc; /* Slate 50 */
+            margin: 0;
+            overflow: hidden;
+        }
+        
+        /* Custom scrollbar for toolbar */
+        .toolbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .toolbar::-webkit-scrollbar-thumb {
+            background-color: #334155;
+            border-radius: 10px;
+        }
+
+        /* Canvas scaling wrapper */
+        #canvas-wrapper {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            background-image: radial-gradient(#334155 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        .canvas-container {
+            transform-origin: center center;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            border: 2px solid #1e293b;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .btn {
+            transition: all 0.2s ease;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        .btn:active {
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col md:flex-row">
+
+    <!-- Sidebar / Toolbar -->
+    <aside class="toolbar w-full md:w-80 bg-slate-900 border-l border-slate-800 flex flex-col h-[40vh] md:h-screen overflow-y-auto shrink-0 z-10 shadow-2xl">
+        <div class="p-6 pb-4 border-b border-slate-800">
+            <h1 class="text-2xl font-black text-white flex items-center gap-2">
+                <span class="text-red-500">▶</span> صانع الصور
+            </h1>
+            <p class="text-slate-400 text-sm mt-1">صمم صور مصغرة لليوتيوب بسهولة</p>
+        </div>
+
+        <div class="p-6 flex flex-col gap-4 flex-1">
+            
+            <!-- Upload Box -->
+            <label class="btn cursor-pointer w-full bg-slate-800 hover:bg-slate-700 border-2 border-dashed border-slate-600 rounded-xl p-6 flex flex-col items-center justify-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                <span class="font-bold text-slate-200">رفع صورة من الجهاز</span>
+                <input type="file" id="imageLoader" accept="image/*" class="hidden" />
+            </label>
+
+            <div class="h-px w-full bg-slate-800 my-2"></div>
+
+            <!-- Elements -->
+            <div class="grid grid-cols-2 gap-3">
+                <button id="addTextBtn" class="btn bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-blue-900/20 text-sm flex flex-col items-center gap-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V2a1 1 0 011-1h3a1 1 0 011 1v1a1 1 0 001 1h1z" opacity="0"/><text x="50%" y="60%" font-size="16" fill="white" font-family="Cairo" font-weight="bold" text-anchor="middle">T</text></svg>
+                    إضافة نص
+                </button>
+                
+                <button id="addCircleBtn" class="btn bg-slate-800 border border-slate-700 hover:bg-slate-700 text-white font-bold py-3 px-4 rounded-xl text-sm flex flex-col items-center gap-1">
+                    <div class="w-6 h-6 rounded-full border-4 border-red-500"></div>
+                    دائرة حمراء
+                </button>
+
+                <button id="addArrowBtn" class="btn bg-slate-800 border border-slate-700 hover:bg-slate-700 text-white font-bold py-3 px-4 rounded-xl text-sm flex flex-col items-center gap-1">
+                    <svg class="w-6 h-6" viewBox="0 0 100 100"><path d="M10,50 L40,20 L40,40 C70,40 90,60 90,90 C80,60 60,60 40,60 L40,80 Z" fill="#ef4444" stroke="white" stroke-width="4"/></svg>
+                    سهم أحمر
+                </button>
+
+                <button id="deleteBtn" class="btn bg-red-900/50 hover:bg-red-800 text-red-200 font-bold py-3 px-4 rounded-xl text-sm flex flex-col items-center gap-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    حذف المحدد
+                </button>
+            </div>
+
+            <div class="h-px w-full bg-slate-800 my-2"></div>
+
+            <!-- Ready Texts Section -->
+            <div>
+                <h3 class="text-slate-300 font-bold mb-3 text-sm flex items-center gap-2">
+                    <span class="text-yellow-500">🔥</span> كلمات جاهزة ومخصصة:
+                </h3>
+                
+                <!-- Custom Text Input -->
+                <div class="flex gap-2 mb-3">
+                    <input type="text" id="customTextInput" placeholder="اكتب كلمتك هنا..." class="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors">
+                    <button id="addCustomTextBtn" class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-2 rounded-lg text-sm transition-colors shadow-lg shadow-blue-900/20 whitespace-nowrap">
+                        إضافة
+                    </button>
+                </div>
+
+                <div class="flex flex-wrap gap-2">
+                    <button class="add-preset-text-btn px-3 py-1.5 bg-red-900/40 hover:bg-red-700 text-red-200 border border-red-800 rounded-lg text-sm font-bold transition-colors" data-text="خيانة!">خيانة!</button>
+                    <button class="add-preset-text-btn px-3 py-1.5 bg-yellow-900/40 hover:bg-yellow-700 text-yellow-200 border border-yellow-800 rounded-lg text-sm font-bold transition-colors" data-text="السر انكشف!">السر انكشف!</button>
+                    <button class="add-preset-text-btn px-3 py-1.5 bg-purple-900/40 hover:bg-purple-700 text-purple-200 border border-purple-800 rounded-lg text-sm font-bold transition-colors" data-text="نهاية غير متوقعة!">نهاية غير متوقعة!</button>
+                    <button class="add-preset-text-btn px-3 py-1.5 bg-green-900/40 hover:bg-green-700 text-green-200 border border-green-800 rounded-lg text-sm font-bold transition-colors" data-text="انتقام قاسي!">انتقام قاسي!</button>
+                    <button class="add-preset-text-btn px-3 py-1.5 bg-blue-900/40 hover:bg-blue-700 text-blue-200 border border-blue-800 rounded-lg text-sm font-bold transition-colors" data-text="النهاية الصادمة!">النهاية الصادمة!</button>
+                </div>
+            </div>
+
+            <div class="h-px w-full bg-slate-800 my-2"></div>
+
+            <!-- Stickers & Shapes Section -->
+            <div>
+                <h3 class="text-slate-300 font-bold mb-3 text-sm flex items-center gap-2">
+                    <span class="text-blue-500">✨</span> ملصقات وإضافات:
+                </h3>
+                <div class="grid grid-cols-2 gap-2">
+                    <button id="addShockEmoji" class="btn bg-slate-800 hover:bg-slate-700 text-2xl py-2 rounded-lg text-center border border-slate-700 transition-colors">😱</button>
+                    <button id="add18Plus" class="btn bg-slate-800 hover:bg-slate-700 text-red-500 font-black text-xl py-2 rounded-lg text-center border border-slate-700 transition-colors">+18</button>
+                    <button id="addCensorBar" class="btn bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold py-2 rounded-lg flex flex-col items-center justify-center gap-1 border border-slate-700 transition-colors">
+                        <div class="w-6 h-2 bg-black rounded-sm"></div>
+                        تظليل أمني
+                    </button>
+                    <button id="addBlurBtn" class="btn bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold py-2 rounded-lg flex flex-col items-center justify-center gap-1 border border-slate-700 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-slate-300 opacity-80" viewBox="0 0 24 24" fill="currentColor">
+                            <circle cx="12" cy="12" r="10" opacity="0.2"/>
+                            <circle cx="12" cy="12" r="5" filter="blur(1.5px)"/>
+                        </svg>
+                        تمويه (بلور)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Hint -->
+            <div class="mt-2 bg-slate-800/50 rounded-lg p-3 text-xs text-slate-400 leading-relaxed border border-slate-700/50">
+                <p>💡 <b>تلميحات:</b></p>
+                <ul class="list-disc list-inside mt-1 space-y-1">
+                    <li>اضغط مرتين على النص لتعديله.</li>
+                    <li>حدد أي عنصر واسحبه أو غير حجمه من الأطراف.</li>
+                    <li>استخدم زر <kbd class="bg-slate-700 px-1 rounded">Delete</kbd> لحذف العنصر.</li>
+                </ul>
+            </div>
+
+        </div>
+
+        <div class="p-6 border-t border-slate-800 bg-slate-900/80 backdrop-blur">
+            <button id="downloadBtn" class="btn w-full bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white font-black text-lg py-4 px-6 rounded-xl shadow-lg shadow-red-900/30 flex justify-center items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                تحميل الصورة
+            </button>
+        </div>
+    </aside>
+
+    <!-- Canvas Area -->
+    <main id="canvas-wrapper" class="flex-1 h-[60vh] md:h-screen w-full relative">
+        <canvas id="thumbnailCanvas"></canvas>
+    </main>
+
+    <!-- JavaScript Logic -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            
+            // 1. Initialize Fabric JS Canvas
+            // Youtube Thumbnail standard size is 1280x720
+            const CANVAS_WIDTH = 1280;
+            const CANVAS_HEIGHT = 720;
+            
+            const canvas = new fabric.Canvas('thumbnailCanvas', {
+                width: CANVAS_WIDTH,
+                height: CANVAS_HEIGHT,
+                backgroundColor: '#1e293b', // default background
+                preserveObjectStacking: true // keep text on top when selected
+            });
+
+            // Make selection controls look modern
+            fabric.Object.prototype.set({
+                transparentCorners: false,
+                cornerColor: '#3b82f6',
+                borderColor: '#3b82f6',
+                cornerSize: 12,
+                padding: 10,
+                cornerStyle: 'circle'
+            });
+
+            // 2. Responsive Canvas Scaling
+            // This trick scales the visual representation while keeping the internal resolution 1280x720
+            function resizeCanvas() {
+                const wrapper = document.getElementById('canvas-wrapper');
+                const container = document.querySelector('.canvas-container');
+                
+                // Add padding so it doesn't touch the edges completely
+                const padding = 40; 
+                const wrapperWidth = wrapper.clientWidth - padding;
+                const wrapperHeight = wrapper.clientHeight - padding;
+                
+                // Calculate scale to fit within wrapper, maintaining 16:9 ratio
+                const scale = Math.min(wrapperWidth / CANVAS_WIDTH, wrapperHeight / CANVAS_HEIGHT);
+                
+                if (container) {
+                    container.style.transform = `scale(${scale})`;
+                }
+            }
+            
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas(); // Call initially
+
+            // --- Blur Logic Setup ---
+            let globalBlurredBgImg = null;
+
+            function generateBlurredBg() {
+                if (!canvas.backgroundImage) return;
+                
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = CANVAS_WIDTH;
+                tempCanvas.height = CANVAS_HEIGHT;
+                const ctx = tempCanvas.getContext('2d');
+                
+                const tempFab = new fabric.StaticCanvas(null, {width: CANVAS_WIDTH, height: CANVAS_HEIGHT});
+                
+                // Clone the current background to render it safely
+                canvas.backgroundImage.clone(function(clonedBg) {
+                    tempFab.setBackgroundImage(clonedBg, () => {
+                        tempFab.renderAll();
+                        // Apply strong smooth blur (Gaussian)
+                        ctx.filter = 'blur(25px)';
+                        ctx.drawImage(tempFab.getElement(), 0, 0);
+                        
+                        const blurredDataUrl = tempCanvas.toDataURL('image/jpeg');
+                        
+                        fabric.Image.fromURL(blurredDataUrl, (img) => {
+                            globalBlurredBgImg = img;
+                            
+                            // Update any existing blur controllers if background changes
+                            canvas.getObjects().forEach(obj => {
+                                if (obj.isBlurController && obj.linkedBlurLayer) {
+                                    obj.linkedBlurLayer.setSrc(blurredDataUrl, () => {
+                                        canvas.renderAll();
+                                    });
+                                }
+                            });
+                        });
+                    });
+                });
+            }
+
+            // 3. Upload Image Logic
+            document.getElementById('imageLoader').addEventListener('change', function (e) {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = function (f) {
+                    const data = f.target.result;
+                    fabric.Image.fromURL(data, function (img) {
+                        // Calculate scale to "cover" the canvas (like object-fit: cover)
+                        const scaleX = canvas.width / img.width;
+                        const scaleY = canvas.height / img.height;
+                        const scale = Math.max(scaleX, scaleY);
+                        
+                        img.set({
+                            originX: 'center',
+                            originY: 'center',
+                            left: canvas.width / 2,
+                            top: canvas.height / 2,
+                            scaleX: scale,
+                            scaleY: scale
+                        });
+                        
+                        canvas.setBackgroundImage(img, () => {
+                            canvas.renderAll();
+                            generateBlurredBg(); // Generate blurred version instantly
+                        });
+                    });
+                };
+                reader.readAsDataURL(file);
+            });
+
+            // 4. Add Text Element
+            function createTextElement(textContent) {
+                const text = new fabric.IText(textContent, {
+                    left: CANVAS_WIDTH / 2,
+                    top: CANVAS_HEIGHT / 2,
+                    originX: 'center',
+                    originY: 'center',
+                    fontFamily: 'Cairo, sans-serif',
+                    fill: '#fde047', // Yellow
+                    stroke: '#000000', // Black outline
+                    strokeWidth: 4,
+                    fontWeight: 900,
+                    fontSize: 120,
+                    direction: 'rtl',
+                    textAlign: 'center',
+                    shadow: new fabric.Shadow({
+                        color: 'rgba(0,0,0,0.8)',
+                        blur: 15,
+                        offsetX: 5,
+                        offsetY: 5
+                    })
+                });
+                // Fix stroke rendering for text so it draws outside the fill
+                text.paintFirst = 'stroke';
+                canvas.add(text);
+                canvas.setActiveObject(text);
+                canvas.renderAll();
+            }
+
+            document.getElementById('addTextBtn').addEventListener('click', () => {
+                createTextElement('نص جديد');
+            });
+
+            // Add Custom Text Logic
+            document.getElementById('addCustomTextBtn').addEventListener('click', () => {
+                const input = document.getElementById('customTextInput');
+                const textValue = input.value.trim();
+                if (textValue !== "") {
+                    createTextElement(textValue);
+                    input.value = ""; // Clear input after adding
+                }
+            });
+            
+            // Allow pressing Enter to add custom text
+            document.getElementById('customTextInput').addEventListener('keypress', function (e) {
+                if (e.key === 'Enter') {
+                    document.getElementById('addCustomTextBtn').click();
+                }
+            });
+
+            // Preset Texts Logic
+            document.querySelectorAll('.add-preset-text-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    createTextElement(e.target.getAttribute('data-text'));
+                });
+            });
+
+            // 5. Add Red Circle Element
+            document.getElementById('addCircleBtn').addEventListener('click', () => {
+                const circle = new fabric.Circle({
+                    left: CANVAS_WIDTH / 2,
+                    top: CANVAS_HEIGHT / 2,
+                    originX: 'center',
+                    originY: 'center',
+                    radius: 100,
+                    fill: 'transparent',
+                    stroke: '#ef4444', // Red 500
+                    strokeWidth: 15,
+                    shadow: new fabric.Shadow({
+                        color: 'rgba(0,0,0,0.5)',
+                        blur: 10,
+                        offsetX: 3,
+                        offsetY: 3
+                    })
+                });
+                canvas.add(circle);
+                canvas.setActiveObject(circle);
+                canvas.renderAll();
+            });
+
+            // 6. Add Arrow Element
+            document.getElementById('addArrowBtn').addEventListener('click', () => {
+                const arrowPath = new fabric.Path('M 10 50 L 40 20 L 40 40 C 70 40 90 60 90 90 C 80 60 60 60 40 60 L 40 80 Z', {
+                    left: CANVAS_WIDTH / 2,
+                    top: CANVAS_HEIGHT / 2,
+                    originX: 'center',
+                    originY: 'center',
+                    fill: '#ef4444', // Red
+                    stroke: '#ffffff', // White outline
+                    strokeWidth: 3,
+                    scaleX: 2, 
+                    scaleY: 2,
+                    shadow: new fabric.Shadow({
+                        color: 'rgba(0,0,0,0.6)',
+                        blur: 15,
+                        offsetX: 5,
+                        offsetY: 5
+                    })
+                });
+                canvas.add(arrowPath);
+                canvas.setActiveObject(arrowPath);
+                canvas.renderAll();
+            });
+
+            // 6.1 Add Shock Emoji
+            document.getElementById('addShockEmoji').addEventListener('click', () => {
+                const text = new fabric.IText('😱', {
+                    left: CANVAS_WIDTH / 2,
+                    top: CANVAS_HEIGHT / 2,
+                    originX: 'center',
+                    originY: 'center',
+                    fontSize: 150,
+                    shadow: new fabric.Shadow({ color: 'rgba(0,0,0,0.5)', blur: 10, offsetX: 5, offsetY: 5 })
+                });
+                canvas.add(text);
+                canvas.setActiveObject(text);
+                canvas.renderAll();
+            });
+
+            // 6.2 Add +18 Icon
+            document.getElementById('add18Plus').addEventListener('click', () => {
+                const text = new fabric.IText('+18', {
+                    left: 150,
+                    top: 150,
+                    originX: 'center',
+                    originY: 'center',
+                    fontFamily: 'Cairo, sans-serif',
+                    fill: '#ef4444', // Red
+                    stroke: '#ffffff', // White outline
+                    strokeWidth: 6,
+                    fontWeight: 900,
+                    fontSize: 100,
+                    shadow: new fabric.Shadow({ color: 'rgba(0,0,0,0.8)', blur: 15, offsetX: 3, offsetY: 3 })
+                });
+                text.paintFirst = 'stroke';
+                canvas.add(text);
+                canvas.setActiveObject(text);
+                canvas.renderAll();
+            });
+
+            // 6.3 Add Censor Bar (Black Rectangle)
+            document.getElementById('addCensorBar').addEventListener('click', () => {
+                const rect = new fabric.Rect({
+                    left: CANVAS_WIDTH / 2,
+                    top: CANVAS_HEIGHT / 2,
+                    originX: 'center',
+                    originY: 'center',
+                    fill: '#000000', // Solid Black
+                    width: 400,
+                    height: 80,
+                    rx: 5, // slightly rounded
+                    ry: 5
+                });
+                canvas.add(rect);
+                canvas.setActiveObject(rect);
+                canvas.renderAll();
+            });
+
+            // 6.4 Add Blur / Smooth Lens Element
+            document.getElementById('addBlurBtn').addEventListener('click', () => {
+                if (!globalBlurredBgImg) {
+                    alert('يرجى رفع صورة أولاً (من زر رفع صورة) لتطبيق تأثير التمويه عليها.');
+                    return;
+                }
+
+                // 1. Create a layer that holds the blurred background
+                globalBlurredBgImg.clone(function(clonedBlurLayer) {
+                    clonedBlurLayer.set({
+                        left: 0, top: 0, originX: 'left', originY: 'top',
+                        selectable: false, evented: false
+                    });
+
+                    // 2. Create the controller (the dashed circle the user drags)
+                    const controller = new fabric.Circle({
+                        left: CANVAS_WIDTH / 2,
+                        top: CANVAS_HEIGHT / 2,
+                        originX: 'center',
+                        originY: 'center',
+                        radius: 80,
+                        fill: 'transparent',
+                        stroke: 'rgba(255, 255, 255, 0.8)',
+                        strokeWidth: 3,
+                        strokeDashArray: [6, 6], // Dashed line so user knows it's a tool
+                        isBlurController: true
+                    });
+
+                    // 3. Create the mask (clipPath) that reveals only the blur inside the controller
+                    const clipCircle = new fabric.Circle({
+                        left: controller.left,
+                        top: controller.top,
+                        originX: 'center',
+                        originY: 'center',
+                        radius: controller.radius,
+                        absolutePositioned: true
+                    });
+
+                    clonedBlurLayer.clipPath = clipCircle;
+                    controller.linkedBlurLayer = clonedBlurLayer; // Link them to delete together
+
+                    // Sync the mask with the controller's position/scale
+                    function syncClipPath() {
+                        clipCircle.set({
+                            left: controller.left,
+                            top: controller.top,
+                            scaleX: controller.scaleX,
+                            scaleY: controller.scaleY,
+                            angle: controller.angle
+                        });
+                        canvas.renderAll();
+                    }
+
+                    controller.on('moving', syncClipPath);
+                    controller.on('scaling', syncClipPath);
+                    controller.on('rotating', syncClipPath);
+
+                    // Add both to canvas
+                    canvas.add(clonedBlurLayer);
+                    canvas.add(controller);
+                    canvas.setActiveObject(controller);
+                    canvas.renderAll();
+                });
+            });
+
+            // 7. Delete Selected Logic
+            function deleteSelected() {
+                const activeObjects = canvas.getActiveObjects();
+                if (activeObjects.length) {
+                    canvas.discardActiveObject();
+                    activeObjects.forEach(function(object) {
+                        // Delete the linked blur layer if this is a blur controller
+                        if (object.linkedBlurLayer) {
+                            canvas.remove(object.linkedBlurLayer);
+                        }
+                        canvas.remove(object);
+                    });
+                }
+            }
+
+            document.getElementById('deleteBtn').addEventListener('click', deleteSelected);
+
+            // Bind Delete/Backspace keyboard keys to delete action
+            window.addEventListener('keydown', function(e) {
+                // Do not delete if user is currently editing text!
+                const activeObject = canvas.getActiveObject();
+                if (activeObject && activeObject.isEditing) {
+                    return; 
+                }
+
+                if (e.key === 'Delete' || e.key === 'Backspace') {
+                    deleteSelected();
+                }
+            });
+
+            // 8. Download Image Logic
+            document.getElementById('downloadBtn').addEventListener('click', () => {
+                // Ensure no object is selected so bounding boxes don't render in the image
+                canvas.discardActiveObject();
+                
+                // إخفاء إطار أداة التمويه (الخطوط البيضاء) قبل التحميل عشان متبانش في الصورة النهائية
+                const blurControllers = canvas.getObjects().filter(o => o.isBlurController);
+                blurControllers.forEach(c => c.set('strokeWidth', 0));
+                
+                canvas.renderAll();
+
+                // Get Data URL
+                const dataURL = canvas.toDataURL({
+                    format: 'jpeg',
+                    quality: 0.95 // High quality
+                });
+
+                // إرجاع الإطار بعد التحميل عشان لو حبيت تكمل تعديل
+                blurControllers.forEach(c => c.set('strokeWidth', 3));
+                canvas.renderAll();
+
+                // Create a temporary link and trigger download
+                const link = document.createElement('a');
+                link.download = 'youtube-thumbnail-clickbait.jpg';
+                link.href = dataURL;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            });
+
+            // Optional: Handle drag and drop files onto the canvas area
+            const wrapper = document.getElementById('canvas-wrapper');
+            wrapper.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                wrapper.classList.add('opacity-80');
+            });
+            wrapper.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                wrapper.classList.remove('opacity-80');
+            });
+            wrapper.addEventListener('drop', (e) => {
+                e.preventDefault();
+                wrapper.classList.remove('opacity-80');
+                
+                if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                    const file = e.dataTransfer.files[0];
+                    if (!file.type.match('image.*')) return;
+                    
+                    const reader = new FileReader();
+                    reader.onload = function (f) {
+                        const data = f.target.result;
+                        fabric.Image.fromURL(data, function (img) {
+                            const scaleX = canvas.width / img.width;
+                            const scaleY = canvas.height / img.height;
+                            const scale = Math.max(scaleX, scaleY);
+                            
+                            img.set({
+                                originX: 'center',
+                                originY: 'center',
+                                left: canvas.width / 2,
+                                top: canvas.height / 2,
+                                scaleX: scale,
+                                scaleY: scale
+                            });
+                            canvas.setBackgroundImage(img, () => {
+                                canvas.renderAll();
+                                generateBlurredBg(); // Generate blurred version instantly
+                            });
+                        });
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
